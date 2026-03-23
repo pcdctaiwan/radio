@@ -258,6 +258,7 @@
                             <option value="gp">四分之一波長 GP (λ/4)</option>
                             <option value="fullwave">全波長 (λ)</option>
                             <option value="3lambda4">三波長 (3λ/4)</option>
+                            <option value="efhw">端饋半波長 EFHW (λ/2)</option>
                         </select>
                         <div class="error-message" id="antenna-type-error">請選擇天線類型</div>
                     </div>
@@ -331,7 +332,8 @@
                 'dipole': { name: '半波長 Dipole (λ/2)', multiplier: 0.5 },
                 'gp': { name: '四分之一波長 GP (λ/4)', multiplier: 0.25 },
                 'fullwave': { name: '全波長 (λ)', multiplier: 1.0 },
-                '3lambda4': { name: '三波長 (3λ/4)', multiplier: 0.75 }
+                '3lambda4': { name: '三波長 (3λ/4)', multiplier: 0.75 },
+                'efhw': { name: '端饋半波長 EFHW (λ/2)', multiplier: 0.5 }
             },
 
             // 計算天線線長
