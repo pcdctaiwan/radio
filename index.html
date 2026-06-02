@@ -1,920 +1,396 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-TW">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BV6LC / DANLEE 雙視角 3D 產生器</title>
-  <style>
-    :root {
-      --bg: #0a1016;
-      --panel: rgba(15, 24, 34, 0.88);
-      --line: rgba(178, 209, 233, 0.14);
-      --text: #eef5fb;
-      --muted: #93a8ba;
-      --accent: #ff8c42;
-      --accent-2: #68e0cf;
-      --shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
-      --radius-xl: 30px;
-      --radius-lg: 22px;
-      --radius-md: 14px;
-      --display: "Iowan Old Style", "Palatino Linotype", serif;
-      --body: "Avenir Next", "Segoe UI", sans-serif;
-      --mono: "SFMono-Regular", "Menlo", monospace;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: var(--body);
-      color: var(--text);
-      background:
-        radial-gradient(circle at top left, rgba(255, 140, 66, 0.28), transparent 24%),
-        radial-gradient(circle at 84% 18%, rgba(104, 224, 207, 0.18), transparent 24%),
-        linear-gradient(145deg, #071017 0%, #0d1520 48%, #121d29 100%);
-    }
-
-    body::before {
-      content: "";
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      background-image:
-        linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
-      background-size: 28px 28px;
-      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), transparent 92%);
-    }
-
-    .shell {
-      width: min(1440px, calc(100vw - 32px));
-      margin: 18px auto;
-      display: grid;
-      grid-template-columns: 400px minmax(0, 1fr);
-      gap: 18px;
-      align-items: start;
-    }
-
-    .panel,
-    .stage-panel {
-      position: relative;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-xl);
-      background: var(--panel);
-      backdrop-filter: blur(18px);
-      box-shadow: var(--shadow);
-    }
-
-    .panel {
-      padding: 24px;
-      position: sticky;
-      top: 18px;
-    }
-
-    .stage-panel {
-      padding: 18px;
-    }
-
-    .panel::before,
-    .stage-panel::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 24%);
-    }
-
-    .eyebrow {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 7px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(255, 255, 255, 0.05);
-      font-size: 12px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-    }
-
-    h1 {
-      margin: 16px 0 10px;
-      font-family: var(--display);
-      font-size: clamp(2.3rem, 2rem + 1vw, 3rem);
-      line-height: 0.95;
-      letter-spacing: -0.04em;
-    }
-
-    .intro {
-      margin: 0 0 20px;
-      color: var(--muted);
-      line-height: 1.65;
-      font-size: 15px;
-    }
-
-    .form-grid {
-      display: grid;
-      gap: 14px;
-    }
-
-    .field,
-    .pair {
-      display: grid;
-      gap: 8px;
-    }
-
-    .pair {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    label {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: #d6e1e9;
-    }
-
-    input,
-    select {
-      width: 100%;
-      padding: 13px 14px;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.09);
-      background: rgba(7, 11, 16, 0.52);
-      color: var(--text);
-      font: inherit;
-      outline: none;
-    }
-
-    input[type="range"] {
-      padding: 0;
-    }
-
-    input:focus,
-    select:focus {
-      border-color: rgba(255, 140, 66, 0.66);
-    }
-
-    button {
-      border: 0;
-      border-radius: 16px;
-      padding: 14px 16px;
-      font: inherit;
-      color: var(--text);
-      cursor: pointer;
-      transition: transform 0.16s ease, filter 0.16s ease;
-    }
-
-    button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.03);
-    }
-
-    .actions,
-    .view-actions {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .view-actions {
-      margin-top: 12px;
-    }
-
-    .primary {
-      background: linear-gradient(135deg, var(--accent), #ffb067);
-      color: #10151c;
-      font-weight: 700;
-    }
-
-    .ghost {
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .stat-grid {
-      margin-top: 16px;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .stat {
-      padding: 14px;
-      border-radius: 18px;
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .stat span {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-    }
-
-    .stat strong {
-      font-size: 1.1rem;
-    }
-
-    .stage-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-bottom: 14px;
-      padding: 0 4px;
-    }
-
-    .stage-head h2,
-    .code-head h2 {
-      margin: 0;
-      font-size: 14px;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #dbe6ee;
-    }
-
-    canvas {
-      display: block;
-      width: 100%;
-      height: min(76vh, 920px);
-      border-radius: 28px;
-      background:
-        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 28%),
-        linear-gradient(180deg, #101823 0%, #0b121a 100%);
-      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-    }
-
-    .caption {
-      margin: 12px 4px 0;
-      color: var(--muted);
-      line-height: 1.6;
-      font-size: 14px;
-    }
-
-    .code-wrap {
-      margin-top: 14px;
-      border-radius: 24px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      background: rgba(5, 8, 12, 0.7);
-    }
-
-    .code-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      padding: 15px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    pre {
-      margin: 0;
-      padding: 16px;
-      max-height: 220px;
-      overflow: auto;
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.58;
-      color: #bff5ec;
-    }
-
-    .status {
-      margin-top: 10px;
-      min-height: 20px;
-      color: #c7d6e1;
-      font-size: 13px;
-    }
-
-    @media (max-width: 1120px) {
-      .shell {
-        grid-template-columns: 1fr;
-      }
-
-      .panel {
-        position: relative;
-        top: auto;
-      }
-    }
-
-    @media (max-width: 720px) {
-      .shell {
-        width: min(100vw - 16px, 100%);
-        margin: 8px auto 18px;
-        gap: 12px;
-      }
-
-      .panel,
-      .stage-panel {
-        padding: 14px;
-        border-radius: 22px;
-      }
-
-      .pair,
-      .actions,
-      .view-actions,
-      .stat-grid {
-        grid-template-columns: 1fr;
-      }
-
-      canvas {
-        height: 64vh;
-        min-height: 420px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<title>雙面文字 3D 錯視 + 底座 - BV6LC / DANLEE</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #1a1a2e; color: #eee; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; }
+  header { padding: 12px 20px; background: #16213e; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  h1 { font-size: 1.1rem; color: #e94560; }
+  .info { font-size: 0.8rem; color: #aaa; }
+  .controls { display: flex; gap: 8px; margin-left: auto; }
+  button {
+    padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer;
+    font-size: 0.85rem; font-weight: bold;
+  }
+  #btnRotate { background: #0f3460; color: #eee; }
+  #btnRotate.active { background: #e94560; }
+  #btnExport { background: #28a745; color: #fff; }
+  #viewLabels { display: flex; gap: 20px; padding: 6px 20px; font-size: 0.78rem; background: #0d1117; }
+  .vl { color: #888; }
+  .vl span { color: #e94560; font-weight: bold; }
+  #canvas3d { flex: 1; display: block; }
+  #status { position: fixed; bottom: 10px; right: 14px; font-size: 0.75rem; color: #666; }
+</style>
 </head>
 <body>
-  <main class="shell">
-    <section class="panel">
-      <span class="eyebrow">Dual-View Voxel Type</span>
-      <h1>雙視角 3D 文字產生器</h1>
-      <p class="intro">
-        正面投影顯示第一組字，Y 軸旋轉 90 度後顯示第二組字。這不是單純切換圖片，而是用兩個投影遮罩生成同一個體素結構。
-      </p>
+<header>
+  <h1>雙面文字 3D 錯視 + 底座</h1>
+  <div class="info">正面 → BV6LC &nbsp;|&nbsp; 側面（旋轉 90°）→ DANLEE</div>
+  <div class="controls">
+    <button id="btnRotate">自動旋轉</button>
+    <button id="btnExport">匯出 STL</button>
+  </div>
+</header>
+<div id="viewLabels">
+  <div class="vl">目前角度：<span id="angleLabel">正面 (BV6LC)</span></div>
+  <div class="vl">拖曳滑鼠旋轉 &nbsp;|&nbsp; 滾輪縮放</div>
+</div>
+<canvas id="canvas3d"></canvas>
+<div id="status">產生中...</div>
 
-      <form id="controlForm" class="form-grid">
-        <div class="pair">
-          <div class="field">
-            <label for="frontText">正面文字</label>
-            <input id="frontText" name="frontText" value="BV6LC">
-          </div>
-          <div class="field">
-            <label for="sideText">90 度文字</label>
-            <input id="sideText" name="sideText" value="DANLEE">
-          </div>
-        </div>
+<script type="module">
+// ─── Three.js via CDN ───────────────────────────────────────────────────────
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
 
-        <div class="pair">
-          <div class="field">
-            <label for="gridHeight">字高解析度</label>
-            <input id="gridHeight" name="gridHeight" type="range" min="10" max="26" step="1" value="16">
-          </div>
-          <div class="field">
-            <label for="voxelSize">體素尺寸</label>
-            <input id="voxelSize" name="voxelSize" type="range" min="12" max="34" step="1" value="22">
-          </div>
-        </div>
+const STATUS = document.getElementById('status');
+const ANGLE_LABEL = document.getElementById('angleLabel');
 
-        <div class="pair">
-          <div class="field">
-            <label for="fontFamily">字型風格</label>
-            <select id="fontFamily" name="fontFamily">
-              <option value="900 1px 'Arial Black', Impact, sans-serif">粗黑體</option>
-              <option value="900 1px 'Avenir Next Condensed', 'Arial Narrow', sans-serif">窄黑體</option>
-              <option value="900 1px 'Times New Roman', serif">粗襯線</option>
-            </select>
-          </div>
-          <div class="field">
-            <label for="gap">體素間距</label>
-            <input id="gap" name="gap" type="range" min="0.02" max="0.28" step="0.01" value="0.08">
-          </div>
-        </div>
+// ─── Scene setup ────────────────────────────────────────────────────────────
+const canvas = document.getElementById('canvas3d');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.shadowMap.enabled = true;
 
-        <div class="pair">
-          <div class="field">
-            <label for="accent">主色</label>
-            <input id="accent" name="accent" type="color" value="#ff8c42">
-          </div>
-          <div class="field">
-            <label for="accent2">陰影色</label>
-            <input id="accent2" name="accent2" type="color" value="#68e0cf">
-          </div>
-        </div>
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+dirLight.position.set(5, 10, 8);
+scene.add(dirLight);
+const dirLight2 = new THREE.DirectionalLight(0xffffff, 0.4);
+dirLight2.position.set(-5, 5, -8);
+scene.add(dirLight2);
 
-        <div class="actions">
-          <button type="submit" class="primary">重新生成</button>
-          <button type="button" id="downloadBtn" class="ghost">下載 PNG</button>
-        </div>
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 500);
+camera.position.set(0, 0, 100);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true;
+controls.autoRotateSpeed = 1.0;
 
-        <div class="actions">
-          <button type="button" id="downloadStlBtn" class="ghost">下載 STL</button>
-          <button type="button" id="copySummaryBtn" class="ghost">複製摘要</button>
-        </div>
+// ─── Config ────────────────────────────────────────────────────────────────────
+// 底座參數
+const BASE_THICKNESS = 8;    // 底座厚度
+const BASE_EXTEND_X = 15;      // 底座左右延伸
+const BASE_EXTEND_Z = 15;     // 底座前後延伸
+const SLANT_HEIGHT = 12;      // 後方比前方高多少（前低後高）
+const WALL_HEIGHT = 6;        // 前方擋板高度
+const WALL_THICKNESS = 4;     // 擋板厚度
 
-        <div class="view-actions">
-          <button type="button" id="frontViewBtn" class="ghost">看 BV6LC</button>
-          <button type="button" id="sideViewBtn" class="ghost">看 DANLEE</button>
-        </div>
+// 文字網格參數
+const FONT = 'bold 48px Arial Black, Arial';
+const GRID_W = 200;
+const GRID_H = 60;
+const GRID_D = 200;
 
-        <div class="field">
-          <label for="rotation">旋轉角度</label>
-          <input id="rotation" name="rotation" type="range" min="0" max="90" step="1" value="0">
-        </div>
-      </form>
-
-      <div class="stat-grid">
-        <div class="stat">
-          <span>前視寬度</span>
-          <strong id="frontWidthStat">-</strong>
-        </div>
-        <div class="stat">
-          <span>側視寬度</span>
-          <strong id="sideWidthStat">-</strong>
-        </div>
-        <div class="stat">
-          <span>體素數量</span>
-          <strong id="voxelCountStat">-</strong>
-        </div>
-      </div>
-
-      <div id="status" class="status" aria-live="polite"></div>
-    </section>
-
-    <section class="stage-panel">
-      <div class="stage-head">
-        <h2>3D 預覽</h2>
-        <span class="eyebrow">Rotate 0° → 90°</span>
-      </div>
-      <canvas id="stage" width="1400" height="980"></canvas>
-      <p class="caption">
-        正面是 `BV6LC`，旋轉到 90 度是 `DANLEE`。中間角度會出現干涉感，這是雙投影體素字的正常結果。
-      </p>
-
-      <div class="code-wrap">
-        <div class="code-head">
-          <h2>模型摘要</h2>
-          <span class="eyebrow">ASCII STL</span>
-        </div>
-        <pre id="summary"></pre>
-      </div>
-    </section>
-  </main>
-
-  <script>
-    const form = document.getElementById("controlForm");
-    const stage = document.getElementById("stage");
-    const ctx = stage.getContext("2d");
-    const rotationInput = document.getElementById("rotation");
-    const status = document.getElementById("status");
-    const summary = document.getElementById("summary");
-    const frontWidthStat = document.getElementById("frontWidthStat");
-    const sideWidthStat = document.getElementById("sideWidthStat");
-    const voxelCountStat = document.getElementById("voxelCountStat");
-
-    const state = {
-      voxels: [],
-      frontWidth: 0,
-      sideWidth: 0,
-      height: 0,
-      voxelSet: new Set()
-    };
-
-    function clamp(value, min, max) {
-      return Math.min(max, Math.max(min, value));
+function textToGrid(text, width = GRID_W, height = GRID_H) {
+  const c = document.createElement('canvas');
+  c.width = width; c.height = height;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = '#fff';
+  ctx.font = FONT;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, width / 2, height / 2);
+  const data = ctx.getImageData(0, 0, width, height).data;
+  const grid = [];
+  for (let y = 0; y < height; y++) {
+    grid[y] = [];
+    for (let x = 0; x < width; x++) {
+      grid[y][x] = data[(y * width + x) * 4] > 128;
     }
+  }
+  return { grid, width, height };
+}
 
-    function hexToRgb(hex) {
-      const clean = hex.replace("#", "");
-      const value = Number.parseInt(clean, 16);
-      return {
-        r: (value >> 16) & 255,
-        g: (value >> 8) & 255,
-        b: value & 255
-      };
-    }
-
-    function mixColor(colorA, colorB, amount) {
-      const a = hexToRgb(colorA);
-      const b = hexToRgb(colorB);
-      const t = clamp(amount, 0, 1);
-      const r = Math.round(a.r + (b.r - a.r) * t);
-      const g = Math.round(a.g + (b.g - a.g) * t);
-      const bChannel = Math.round(a.b + (b.b - a.b) * t);
-      return `rgb(${r}, ${g}, ${bChannel})`;
-    }
-
-    function setStatus(message) {
-      status.textContent = message;
-    }
-
-    function getSettings() {
-      const data = Object.fromEntries(new FormData(form).entries());
-      return {
-        frontText: (data.frontText || "BV6LC").toUpperCase(),
-        sideText: (data.sideText || "DANLEE").toUpperCase(),
-        gridHeight: Number(data.gridHeight),
-        voxelSize: Number(data.voxelSize),
-        fontFamily: data.fontFamily,
-        gap: Number(data.gap),
-        accent: data.accent,
-        accent2: data.accent2,
-        rotationDeg: Number(rotationInput.value)
-      };
-    }
-
-    function rasterizeText(text, gridHeight, fontFamily) {
-      const sampleScale = 12;
-      const canvas = document.createElement("canvas");
-      const ctx2d = canvas.getContext("2d", { willReadFrequently: true });
-      const targetHeight = gridHeight * sampleScale;
-      const fontSize = Math.max(64, Math.floor(targetHeight * 0.86));
-      ctx2d.font = fontFamily.replace("1px", `${fontSize}px`);
-      const metrics = ctx2d.measureText(text);
-      const rawWidth = Math.max(1, Math.ceil(metrics.width + sampleScale * 2));
-      canvas.width = rawWidth;
-      canvas.height = targetHeight;
-
-      ctx2d.clearRect(0, 0, canvas.width, canvas.height);
-      ctx2d.fillStyle = "#000";
-      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
-      ctx2d.fillStyle = "#fff";
-      ctx2d.font = fontFamily.replace("1px", `${fontSize}px`);
-      ctx2d.textBaseline = "middle";
-      ctx2d.textAlign = "center";
-      ctx2d.fillText(text, canvas.width / 2, canvas.height / 2);
-
-      const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height).data;
-      const cols = [];
-      const rows = gridHeight;
-      const estimatedWidth = Math.max(6, Math.round((canvas.width / canvas.height) * gridHeight));
-
-      for (let gx = 0; gx < estimatedWidth; gx += 1) {
-        cols.push(Array(rows).fill(false));
+// ─── 建立 vox 列表（含位置偏移） ────────────────────────────────────────────
+function buildVoxels(frontText, sideText) {
+  const GW = GRID_W, GH = GRID_H, GD = GRID_D;
+  const { grid: fg } = textToGrid(frontText, GW, GH);
+  const { grid: sg } = textToGrid(sideText, GD, GH);
+  
+  const positions = [];
+  const voxSize = 1;
+  
+  // 原點偏移 (文字置中)
+  const ox = -GW / 2, oy = -GH / 2, oz = -GD / 2;
+  
+  // 第一部分：交集體素
+  for (let iy = 0; iy < GH; iy++) {
+    for (let ix = 0; ix < GW; ix++) {
+      if (!fg[iy][ix]) continue;
+      for (let iz = 0; iz < GD; iz++) {
+        if (!sg[iy][iz]) continue;
+        // 加入 slant：前方(iy較大)較低，後方較高
+        const slantOffset = Math.floor((iy / GH) * SLANT_HEIGHT);
+        positions.push({
+          x: ox + ix + 0.5,
+          y: -(oy + iy + 0.5) - BASE_THICKNESS + slantOffset,
+          z: oz + iz + 0.5
+        });
       }
-
-      for (let gx = 0; gx < estimatedWidth; gx += 1) {
-        for (let gy = 0; gy < rows; gy += 1) {
-          const startX = Math.floor((gx / estimatedWidth) * canvas.width);
-          const endX = Math.floor(((gx + 1) / estimatedWidth) * canvas.width);
-          const startY = Math.floor((gy / rows) * canvas.height);
-          const endY = Math.floor(((gy + 1) / rows) * canvas.height);
-          let onPixels = 0;
-          let totalPixels = 0;
-
-          for (let px = startX; px < Math.max(startX + 1, endX); px += 1) {
-            for (let py = startY; py < Math.max(startY + 1, endY); py += 1) {
-              const idx = (py * canvas.width + px) * 4;
-              totalPixels += 1;
-              if (imageData[idx] > 120) {
-                onPixels += 1;
-              }
-            }
-          }
-
-          cols[gx][gy] = totalPixels > 0 && onPixels / totalPixels > 0.24;
-        }
+    }
+  }
+  
+  // 第二部分：底座（平坦平台）
+  // 底座範圍：涵蓋文字範圍並延伸
+  const minX = ox, maxX = ox + GW;
+  const minY = -BASE_THICKNESS, maxY = 0;
+  const minZ = oz, maxZ = oz + GD;
+  
+  // 左側底座
+  for (let y = minY; y < 0; y++) {
+    for (let x = minX - BASE_EXTEND_X; x < minX; x++) {
+      for (let z = minZ - BASE_EXTEND_Z; z < maxZ + BASE_EXTEND_Z; z++) {
+        positions.push({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
       }
-
-      let minX = estimatedWidth;
-      let maxX = -1;
-      for (let gx = 0; gx < estimatedWidth; gx += 1) {
-        if (cols[gx].some(Boolean)) {
-          minX = Math.min(minX, gx);
-          maxX = Math.max(maxX, gx);
-        }
+    }
+  }
+  // 右側底座
+  for (let y = minY; y < 0; y++) {
+    for (let x = maxX; x < maxX + BASE_EXTEND_X; x++) {
+      for (let z = minZ - BASE_EXTEND_Z; z < maxZ + BASE_EXTEND_Z; z++) {
+        positions.push({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
       }
-
-      if (maxX === -1) {
-        return Array.from({ length: 6 }, () => Array(rows).fill(false));
+    }
+  }
+  // 前側底座（在文字前方）
+  for (let y = minY; y < 0; y++) {
+    for (let x = minX; x < maxX; x++) {
+      for (let z = maxZ; z < maxZ + BASE_EXTEND_Z; z++) {
+        positions.push({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
       }
-
-      return cols.slice(minX, maxX + 1);
     }
-
-    function buildVoxelModel(settings) {
-      const frontMask = rasterizeText(settings.frontText, settings.gridHeight, settings.fontFamily);
-      const sideMask = rasterizeText(settings.sideText, settings.gridHeight, settings.fontFamily);
-      const frontWidth = frontMask.length;
-      const sideWidth = sideMask.length;
-      const voxels = [];
-
-      for (let x = 0; x < frontWidth; x += 1) {
-        for (let z = 0; z < sideWidth; z += 1) {
-          for (let y = 0; y < settings.gridHeight; y += 1) {
-            if (frontMask[x][y] && sideMask[z][y]) {
-              voxels.push({ x, y, z });
-            }
-          }
-        }
+  }
+  // 後側底座
+  for (let y = minY; y < 0; y++) {
+    for (let x = minX; x < maxX; x++) {
+      for (let z = minZ - BASE_EXTEND_Z; z < minZ; z++) {
+        positions.push({ x: x + 0.5, y: y + 0.5, z: z + 0.5 });
       }
-
-      return {
-        voxels,
-        frontWidth,
-        sideWidth,
-        height: settings.gridHeight
-      };
     }
-
-    function formatNumber(value) {
-      return Number(value.toFixed(4)).toString();
+  }
+  // 底部完整填充
+  for (let x = minX - BASE_EXTEND_X; x < maxX + BASE_EXTEND_X; x++) {
+    for (let z = minZ - BASE_EXTEND_Z; z < maxZ + BASE_EXTEND_Z; z++) {
+      positions.push({ x: x + 0.5, y: minY + 0.5, z: z + 0.5 });
     }
-
-    function voxelKey(x, y, z) {
-      return `${x},${y},${z}`;
+  }
+  
+  // 第三部分：前方擋板（防止小電台滑落）
+  // 擋板位置：在最前方，高度和厚度
+  const wallZ = maxZ + BASE_EXTEND_Z - WALL_THICKNESS;
+  for (let y = 0; y < WALL_HEIGHT; y++) {
+    for (let x = minX + 10; x < maxX - 10; x++) {
+      positions.push({
+        x: x + 0.5,
+        y: y + 0.5 - BASE_THICKNESS + SLANT_HEIGHT, // 加上 slant 偏移
+        z: wallZ + 0.5
+      });
     }
+  }
+  
+  return positions;
+}
 
-    function buildVoxelSet(voxels) {
-      return new Set(voxels.map((voxel) => voxelKey(voxel.x, voxel.y, voxel.z)));
+// ─── 建立 InstancedMesh ──────────────────────────────────────────────────
+function buildModelMesh(frontText, sideText) {
+  const positions = buildVoxels(frontText, sideText);
+  if (positions.length === 0) return null;
+  
+  const dummy = new THREE.Object3D();
+  const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  const mat = new THREE.MeshPhongMaterial({ 
+    color: 0xe94560,
+    specular: 0x333333,
+    shininess: 30
+  });
+  const mesh = new THREE.InstancedMesh(boxGeo, mat, positions.length);
+  
+  for (let i = 0; i < positions.length; i++) {
+    dummy.position.set(positions[i].x, positions[i].y, positions[i].z);
+    dummy.updateMatrix();
+    mesh.setMatrixAt(i, dummy.matrix);
+  }
+  mesh.instanceMatrix.needsUpdate = true;
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  return mesh;
+}
+
+// ─── 建立場景物件 ────────────────────────────────────────────────────────────
+STATUS.textContent = '計算體素中...';
+let modelMesh = null;
+
+setTimeout(() => {
+  modelMesh = buildModelMesh('BV6LC', 'DANLEE');
+  if (modelMesh) {
+    scene.add(modelMesh);
+    STATUS.textContent = `體素數：${modelMesh.count}（含底座）`;
+  } else {
+    STATUS.textContent = '錯誤：無法建立模型';
+  }
+}, 50);
+
+// ─── 視角參考框 ────────────────────────────────────────────────────────────
+const boxHelper = new THREE.BoxHelper(new THREE.Mesh(
+  new THREE.BoxGeometry(GRID_W + BASE_EXTEND_X * 2, BASE_THICKNESS + GRID_H + SLANT_HEIGHT + WALL_HEIGHT, GRID_D + BASE_EXTEND_Z * 2)
+), 0x333366);
+boxHelper.position.y = (GRID_H - BASE_THICKNESS) / 2;
+scene.add(boxHelper);
+
+// ─── 地面參照 ────────────────────────────────────────────────────────────
+const groundGeo = new THREE.PlaneGeometry(300, 300);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x0d1117 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -BASE_THICKNESS - 0.5;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// ─── 自動旋轉 ────────────────────────────────────────────────────────────────
+let autoRotate = false;
+document.getElementById('btnRotate').addEventListener('click', (e) => {
+  autoRotate = !autoRotate;
+  e.target.classList.toggle('active', autoRotate);
+  controls.autoRotate = autoRotate;
+});
+
+// ─── Resize ──────────────────────────────────────────────────────────────────
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+new ResizeObserver(resize).observe(canvas);
+resize();
+
+// ─── 角度 label ──────────────────────────────────────────────────────────────
+function updateAngleLabel() {
+  const az = ((controls.getAzimuthalAngle() * 180 / Math.PI) % 360 + 360) % 360;
+  const near90 = Math.abs(az - 90) < 20 || Math.abs(az - 270) < 20;
+  ANGLE_LABEL.textContent = near90 ? '側面 (DANLEE)' : '正面 (BV6LC)';
+}
+
+// ─── Render loop ───────────────────────────────���─���───────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  updateAngleLabel();
+  renderer.render(scene, camera);
+}
+animate();
+
+// ─── STL 匯出 ────────────────────────────────────────────────────────────────
+document.getElementById('btnExport').addEventListener('click', () => {
+  if (!modelMesh) return alert('模型尚未建立完成');
+  STATUS.textContent = '匯出 STL 中...';
+  
+  setTimeout(() => {
+    const merged = mergeInstancedMesh(modelMesh);
+    const stlBinary = geometryToSTLBinary(merged);
+    
+    const blob = new Blob([stlBinary], { type: 'application/octet-stream' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'BV6LC_DANLEE_base.stl';
+    a.click();
+    STATUS.textContent = 'STL 已下載';
+  }, 100);
+});
+
+function mergeInstancedMesh(instMesh) {
+  const geo = instMesh.geometry.clone();
+  const posAttr = geo.attributes.position;
+  const vCount = posAttr.count;
+  const fCount = instMesh.count * 36; // 每個 box 36 個三角形
+  
+  const allPos = new Float32Array(vCount * 3);
+  const allNorm = new Float32Array(vCount * 3);
+  const allIdx = new Uint32Array(fCount);
+  
+  const dummy = new THREE.Object3D();
+  const normMat = new THREE.Matrix3();
+  const v = new THREE.Vector3();
+  const mat = new THREE.Matrix4();
+  
+  // 收集實例矩陣
+  const matrices = [];
+  for (let i = 0; i < instMesh.count; i++) {
+    instMesh.getMatrixAt(i, mat);
+    matrices.push(mat.clone());
+  }
+  
+  // 合併位置
+  for (let vi = 0; vi < vCount; vi++) {
+    v.fromBufferAttribute(posAttr, vi);
+    // 找出在哪個實例
+    const instanceIdx = Math.floor(vi / vCount);
+    if (matrices[instanceIdx]) {
+      v.applyMatrix4(matrices[instanceIdx]);
     }
-
-    function projectPoint(x, y, z, rotation, scale) {
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
-      const rx = x * cos - z * sin;
-      const rz = x * sin + z * cos;
-      const isoX = (rx - rz) * scale * 0.88;
-      const isoY = y * scale * -1.05 + (rx + rz) * scale * 0.26;
-      return { x: isoX, y: isoY, depth: rx + rz + y * 0.2 };
+    allPos[vi * 3] = v.x;
+    allPos[vi * 3 + 1] = v.y;
+    allPos[vi * 3 + 2] = v.z;
+  }
+  
+  // 產生索引
+  for (let i = 0; i < instMesh.count; i++) {
+    const base = i * vCount;
+    for (let j = 0; j < vCount; j++) {
+      allIdx[i * vCount + j] = base + j;
     }
+  }
+  
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.BufferAttribute(allPos, 3));
+  out.setIndex(new THREE.BufferAttribute(allIdx, 1));
+  out.computeVertexNormals();
+  return out;
+}
 
-    function cubeFaces(x, y, z, size, rotation) {
-      const vertices = [
-        [x, y, z],
-        [x + size, y, z],
-        [x + size, y + size, z],
-        [x, y + size, z],
-        [x, y, z + size],
-        [x + size, y, z + size],
-        [x + size, y + size, z + size],
-        [x, y + size, z + size]
-      ].map(([vx, vy, vz]) => projectPoint(vx, vy, vz, rotation, 1));
-
-      return {
-        top: [vertices[3], vertices[2], vertices[6], vertices[7]],
-        left: [vertices[0], vertices[3], vertices[7], vertices[4]],
-        right: [vertices[1], vertices[2], vertices[6], vertices[5]],
-        depth: vertices.reduce((sum, point) => sum + point.depth, 0) / vertices.length
-      };
+function geometryToSTLBinary(geo) {
+  const pos = geo.attributes.position;
+  const idx = geo.index;
+  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  const buf = new ArrayBuffer(84 + triCount * 50);
+  const view = new DataView(buf);
+  
+  const header = 'BV6LC DANLEE with base';
+  for (let i = 0; i < 80; i++) view.setUint8(i, header.charCodeAt(i) || 0);
+  view.setUint32(80, triCount, true);
+  
+  const va = new THREE.Vector3(), vb = new THREE.Vector3(), vc = new THREE.Vector3();
+  const n = new THREE.Vector3();
+  let offset = 84;
+  
+  for (let t = 0; t < triCount; t++) {
+    const ia = idx ? idx.getX(t * 3) : t * 3;
+    const ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
+    const ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+    va.fromBufferAttribute(pos, ia);
+    vb.fromBufferAttribute(pos, ib);
+    vc.fromBufferAttribute(pos, ic);
+    n.crossVectors(vb.clone().sub(va), vc.clone().sub(va)).normalize();
+    
+    view.setFloat32(offset, n.x, true); offset += 4;
+    view.setFloat32(offset, n.y, true); offset += 4;
+    view.setFloat32(offset, n.z, true); offset += 4;
+    for (const v of [va, vb, vc]) {
+      view.setFloat32(offset, v.x, true); offset += 4;
+      view.setFloat32(offset, v.y, true); offset += 4;
+      view.setFloat32(offset, v.z, true); offset += 4;
     }
-
-    function drawPolygon(points, fillStyle, strokeStyle) {
-      ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      for (let i = 1; i < points.length; i += 1) {
-        ctx.lineTo(points[i].x, points[i].y);
-      }
-      ctx.closePath();
-      ctx.fillStyle = fillStyle;
-      ctx.fill();
-      ctx.strokeStyle = strokeStyle;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    function renderStage() {
-      const settings = getSettings();
-      const { voxels, frontWidth, sideWidth, height } = state;
-      const angle = settings.rotationDeg * Math.PI / 180;
-
-      ctx.clearRect(0, 0, stage.width, stage.height);
-      ctx.save();
-      ctx.translate(stage.width * 0.5, stage.height * 0.7);
-
-      const bound = Math.max(frontWidth, sideWidth, height);
-      const scale = clamp(stage.width / (bound * 3.1), 10, 28);
-      const cubeSize = scale * (1 - settings.gap);
-      const offsetX = -frontWidth / 2;
-      const offsetZ = -sideWidth / 2;
-      const offsetY = -height / 2;
-
-      const sorted = voxels.map((voxel) => {
-        const worldX = (voxel.x + offsetX) * scale;
-        const worldY = (voxel.y + offsetY) * scale;
-        const worldZ = (voxel.z + offsetZ) * scale;
-        const faces = cubeFaces(worldX, worldY, worldZ, cubeSize, angle);
-        return { faces };
-      }).sort((a, b) => a.faces.depth - b.faces.depth);
-
-      const topColor = mixColor(settings.accent, "#ffffff", 0.18);
-      const leftColor = mixColor(settings.accent2, "#081018", 0.26);
-      const rightColor = mixColor(settings.accent, settings.accent2, 0.42);
-      const stroke = "rgba(255,255,255,0.08)";
-
-      for (const item of sorted) {
-        drawPolygon(item.faces.left, leftColor, stroke);
-        drawPolygon(item.faces.right, rightColor, stroke);
-        drawPolygon(item.faces.top, topColor, stroke);
-      }
-
-      ctx.restore();
-    }
-
-    function updateSummary() {
-      const settings = getSettings();
-      const widthMm = state.frontWidth * settings.voxelSize;
-      const depthMm = state.sideWidth * settings.voxelSize;
-      const heightMm = state.height * settings.voxelSize;
-      summary.textContent = [
-        `frontText: ${settings.frontText}`,
-        `sideText: ${settings.sideText}`,
-        `gridHeight: ${settings.gridHeight}`,
-        `frontWidth: ${state.frontWidth}`,
-        `sideWidth: ${state.sideWidth}`,
-        `voxelCount: ${state.voxels.length}`,
-        `sizeMm: ${widthMm} x ${heightMm} x ${depthMm}`,
-        `voxelSizeMm: ${settings.voxelSize}`,
-        `rotationDeg: ${settings.rotationDeg}`,
-        `fontFamily: ${settings.fontFamily}`
-      ].join("\n");
-    }
-
-    function regenerate() {
-      const settings = getSettings();
-      state.voxels = [];
-      const model = buildVoxelModel(settings);
-      state.voxels = model.voxels;
-      state.frontWidth = model.frontWidth;
-      state.sideWidth = model.sideWidth;
-      state.height = model.height;
-      state.voxelSet = buildVoxelSet(model.voxels);
-
-      frontWidthStat.textContent = `${state.frontWidth} 格`;
-      sideWidthStat.textContent = `${state.sideWidth} 格`;
-      voxelCountStat.textContent = `${state.voxels.length}`;
-
-      renderStage();
-      updateSummary();
-      setStatus("已重新生成雙視角體素模型。");
-    }
-
-    function copySummary() {
-      navigator.clipboard.writeText(summary.textContent)
-        .then(() => setStatus("模型摘要已複製。"))
-        .catch(() => setStatus("無法複製摘要，可能是瀏覽器權限限制。"));
-    }
-
-    function downloadPng() {
-      const link = document.createElement("a");
-      link.href = stage.toDataURL("image/png");
-      link.download = "bv6lc-danlee-voxel.png";
-      link.click();
-      setStatus("已下載 PNG。");
-    }
-
-    function facetToStl(normal, points) {
-      const lines = [
-        `  facet normal ${normal.map(formatNumber).join(" ")}`,
-        "    outer loop"
-      ];
-
-      for (const point of points) {
-        lines.push(`      vertex ${point.map(formatNumber).join(" ")}`);
-      }
-
-      lines.push("    endloop");
-      lines.push("  endfacet");
-      return lines.join("\n");
-    }
-
-    function quadToTriangles(normal, quad) {
-      return [
-        facetToStl(normal, [quad[0], quad[1], quad[2]]),
-        facetToStl(normal, [quad[0], quad[2], quad[3]])
-      ];
-    }
-
-    function generateStl() {
-      const settings = getSettings();
-      const step = settings.voxelSize;
-      const lines = ["solid dual_view_text"];
-      const faceDefs = [
-        {
-          delta: [1, 0, 0],
-          normal: [1, 0, 0],
-          quad: (x, y, z) => [
-            [x + step, y, z],
-            [x + step, y + step, z],
-            [x + step, y + step, z + step],
-            [x + step, y, z + step]
-          ]
-        },
-        {
-          delta: [-1, 0, 0],
-          normal: [-1, 0, 0],
-          quad: (x, y, z) => [
-            [x, y, z],
-            [x, y, z + step],
-            [x, y + step, z + step],
-            [x, y + step, z]
-          ]
-        },
-        {
-          delta: [0, 1, 0],
-          normal: [0, 1, 0],
-          quad: (x, y, z) => [
-            [x, y + step, z],
-            [x, y + step, z + step],
-            [x + step, y + step, z + step],
-            [x + step, y + step, z]
-          ]
-        },
-        {
-          delta: [0, -1, 0],
-          normal: [0, -1, 0],
-          quad: (x, y, z) => [
-            [x, y, z],
-            [x + step, y, z],
-            [x + step, y, z + step],
-            [x, y, z + step]
-          ]
-        },
-        {
-          delta: [0, 0, 1],
-          normal: [0, 0, 1],
-          quad: (x, y, z) => [
-            [x, y, z + step],
-            [x + step, y, z + step],
-            [x + step, y + step, z + step],
-            [x, y + step, z + step]
-          ]
-        },
-        {
-          delta: [0, 0, -1],
-          normal: [0, 0, -1],
-          quad: (x, y, z) => [
-            [x, y, z],
-            [x, y + step, z],
-            [x + step, y + step, z],
-            [x + step, y, z]
-          ]
-        }
-      ];
-
-      for (const voxel of state.voxels) {
-        const x = voxel.x * step;
-        const y = (state.height - 1 - voxel.y) * step;
-        const z = voxel.z * step;
-
-        for (const face of faceDefs) {
-          const nx = voxel.x + face.delta[0];
-          const ny = voxel.y + face.delta[1];
-          const nz = voxel.z + face.delta[2];
-          if (state.voxelSet.has(voxelKey(nx, ny, nz))) {
-            continue;
-          }
-
-          const facets = quadToTriangles(face.normal, face.quad(x, y, z));
-          lines.push(...facets);
-        }
-      }
-
-      lines.push("endsolid dual_view_text");
-      return lines.join("\n");
-    }
-
-    function downloadStl() {
-      if (!state.voxels.length) {
-        setStatus("目前沒有可輸出的體素模型。");
-        return;
-      }
-
-      const stl = generateStl();
-      const blob = new Blob([stl], { type: "model/stl" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "bv6lc-danlee-voxel.stl";
-      link.click();
-      URL.revokeObjectURL(url);
-      setStatus("已下載 STL。");
-    }
-
-    form.addEventListener("submit", (event) => {
-      event.preventDefault();
-      regenerate();
-    });
-
-    form.addEventListener("input", (event) => {
-      if (event.target === rotationInput) {
-        renderStage();
-        updateSummary();
-        setStatus(`已旋轉到 ${rotationInput.value}°。`);
-        return;
-      }
-
-      regenerate();
-    });
-
-    document.getElementById("frontViewBtn").addEventListener("click", () => {
-      rotationInput.value = "0";
-      renderStage();
-      updateSummary();
-      setStatus("已切到正面視角。");
-    });
-
-    document.getElementById("sideViewBtn").addEventListener("click", () => {
-      rotationInput.value = "90";
-      renderStage();
-      updateSummary();
-      setStatus("已切到 90 度視角。");
-    });
-
-    document.getElementById("downloadBtn").addEventListener("click", downloadPng);
-    document.getElementById("downloadStlBtn").addEventListener("click", downloadStl);
-    document.getElementById("copySummaryBtn").addEventListener("click", copySummary);
-
-    regenerate();
-  </script>
+    view.setUint16(offset, 0, true); offset += 2;
+  }
+  
+  return buf;
+}
+</script>
 </body>
 </html>
