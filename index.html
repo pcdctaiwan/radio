@@ -29,7 +29,7 @@
 <header>
   <h1>雙面文字 3D 錯視 + 底座</h1>
   <div class="info">正面 → BV6LC &nbsp;|&nbsp; 側面（旋轉 90°）→ DANLEE</div>
-  <div class="version">2026-06-02 17:48</div>
+  <div class="version">2026-06-02 17:56</div>
   <div class="controls">
     <button id="btnRotate">自動旋轉</button>
     <button id="btnExport">匯出 STL</button>
@@ -291,80 +291,45 @@ animate();
 
 // ─── STL 匯出 ────────────────────────────────────────────────────────────────
 document.getElementById('btnExport').addEventListener('click', () => {
-  if (!modelMesh) return alert('模型尚未建立完成');
+  if (!modelMesh) {
+    alert('模型尚未建立完成，請稍候');
+    return;
+  }
   STATUS.textContent = '匯出 STL 中...';
   
-  setTimeout(() => {
-    const merged = mergeInstancedMesh(modelMesh);
-    const stlBinary = geometryToSTLBinary(merged);
-    
-    const blob = new Blob([stlBinary], { type: 'application/octet-stream' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'BV6LC_DANLEE_base.stl';
-    a.click();
-    STATUS.textContent = 'STL 已下載';
-  }, 100);
-});
-
-function mergeInstancedMesh(instMesh) {
-  const geo = instMesh.geometry.clone();
-  const posAttr = geo.attributes.position;
-  const vCount = posAttr.count;
-  const fCount = instMesh.count * 36; // 每個 box 36 個三角形
+  // 直接從 instanced mesh 擷取所有 box
+  const positions = modelMesh.instanceMatrix.array;
+  const count = modelMesh.count;
+  const triangles = [];
   
-  const allPos = new Float32Array(vCount * 3);
-  const allNorm = new Float32Array(vCount * 3);
-  const allIdx = new Uint32Array(fCount);
+  // Box 的 8 個頂點（相對於中心）+ 36 個三角形索引
+  const boxVerts = [
+    [-0.5,-0.5,-0.5],[ 0.5,-0.5,-0.5],[ 0.5, 0.5,-0.5],[-0.5, 0.5,-0.5],
+    [-0.5,-0.5, 0.5],[ 0.5,-0.5, 0.5],[ 0.5, 0.5, 0.5],[-0.5, 0.5, 0.5]
+  ];
+  const boxIndices = [
+    0,1,2, 0,2,3, 4,6,5, 4,7,6, 0,4,5, 0,5,1,
+    2,6,7, 2,7,3, 1,5,6, 1,6,2, 4,0,3, 4,3,7
+  ];
   
-  const dummy = new THREE.Object3D();
-  const normMat = new THREE.Matrix3();
-  const v = new THREE.Vector3();
   const mat = new THREE.Matrix4();
+  const pos = new THREE.Vector3();
+  const triangleVertices = [];
   
-  // 收集實例矩陣
-  const matrices = [];
-  for (let i = 0; i < instMesh.count; i++) {
-    instMesh.getMatrixAt(i, mat);
-    matrices.push(mat.clone());
-  }
-  
-  // 合併位置
-  for (let vi = 0; vi < vCount; vi++) {
-    v.fromBufferAttribute(posAttr, vi);
-    // 找出在哪個實例
-    const instanceIdx = Math.floor(vi / vCount);
-    if (matrices[instanceIdx]) {
-      v.applyMatrix4(matrices[instanceIdx]);
-    }
-    allPos[vi * 3] = v.x;
-    allPos[vi * 3 + 1] = v.y;
-    allPos[vi * 3 + 2] = v.z;
-  }
-  
-  // 產生索引
-  for (let i = 0; i < instMesh.count; i++) {
-    const base = i * vCount;
-    for (let j = 0; j < vCount; j++) {
-      allIdx[i * vCount + j] = base + j;
+  for (let i = 0; i < count; i++) {
+    modelMesh.getMatrixAt(i, mat);
+    for (const vi of boxIndices) {
+      pos.set(boxVerts[vi][0], boxVerts[vi][1], boxVerts[vi][2]);
+      pos.applyMatrix4(mat);
+      triangleVertices.push(pos.x, pos.y, pos.z);
     }
   }
   
-  const out = new THREE.BufferGeometry();
-  out.setAttribute('position', new THREE.BufferAttribute(allPos, 3));
-  out.setIndex(new THREE.BufferAttribute(allIdx, 1));
-  out.computeVertexNormals();
-  return out;
-}
-
-function geometryToSTLBinary(geo) {
-  const pos = geo.attributes.position;
-  const idx = geo.index;
-  const triCount = idx ? idx.count / 3 : pos.count / 3;
+  // 寫入 STL binary
+  const triCount = triangleVertices.length / 3;
   const buf = new ArrayBuffer(84 + triCount * 50);
   const view = new DataView(buf);
-  
-  const header = 'BV6LC DANLEE with base';
+  const header = 'BV6LC DANLEE base';
   for (let i = 0; i < 80; i++) view.setUint8(i, header.charCodeAt(i) || 0);
   view.setUint32(80, triCount, true);
   
@@ -373,12 +338,9 @@ function geometryToSTLBinary(geo) {
   let offset = 84;
   
   for (let t = 0; t < triCount; t++) {
-    const ia = idx ? idx.getX(t * 3) : t * 3;
-    const ib = idx ? idx.getX(t * 3 + 1) : t * 3 + 1;
-    const ic = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
-    va.fromBufferAttribute(pos, ia);
-    vb.fromBufferAttribute(pos, ib);
-    vc.fromBufferAttribute(pos, ic);
+    va.set(triangleVertices[t*3], triangleVertices[t*3+1], triangleVertices[t*3+2]);
+    vb.set(triangleVertices[t*3+3], triangleVertices[t*3+4], triangleVertices[t*3+5]);
+    vc.set(triangleVertices[t*3+6], triangleVertices[t*3+7], triangleVertices[t*3+8]);
     n.crossVectors(vb.clone().sub(va), vc.clone().sub(va)).normalize();
     
     view.setFloat32(offset, n.x, true); offset += 4;
@@ -392,8 +354,13 @@ function geometryToSTLBinary(geo) {
     view.setUint16(offset, 0, true); offset += 2;
   }
   
-  return buf;
-}
+  const blob = new Blob([buf], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'BV6LC_DANLEE_base.stl';
+  a.click();
+  STATUS.textContent = `STL 已下載（${triCount/3}個三角面）`;
+});
 </script>
 </body>
 </html>
