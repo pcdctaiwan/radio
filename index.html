@@ -1,668 +1,920 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>天線線長計算器</title>
-    <style>
-        :root {
-            --primary: #1E88E5;
-            --primary-dark: #1565C0;
-            --background: #F5F5F5;
-            --card-bg: #FFFFFF;
-            --text: #212121;
-            --text-secondary: #757575;
-            --error: #D32F2F;
-            --success: #388E3C;
-            --border: #E0E0E0;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BV6LC / DANLEE 雙視角 3D 產生器</title>
+  <style>
+    :root {
+      --bg: #0a1016;
+      --panel: rgba(15, 24, 34, 0.88);
+      --line: rgba(178, 209, 233, 0.14);
+      --text: #eef5fb;
+      --muted: #93a8ba;
+      --accent: #ff8c42;
+      --accent-2: #68e0cf;
+      --shadow: 0 28px 90px rgba(0, 0, 0, 0.32);
+      --radius-xl: 30px;
+      --radius-lg: 22px;
+      --radius-md: 14px;
+      --display: "Iowan Old Style", "Palatino Linotype", serif;
+      --body: "Avenir Next", "Segoe UI", sans-serif;
+      --mono: "SFMono-Regular", "Menlo", monospace;
+    }
 
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+    * {
+      box-sizing: border-box;
+    }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: var(--background);
-            color: var(--text);
-            line-height: 1.6;
-            padding: 16px;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--body);
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(255, 140, 66, 0.28), transparent 24%),
+        radial-gradient(circle at 84% 18%, rgba(104, 224, 207, 0.18), transparent 24%),
+        linear-gradient(145deg, #071017 0%, #0d1520 48%, #121d29 100%);
+    }
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.026) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.026) 1px, transparent 1px);
+      background-size: 28px 28px;
+      mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.88), transparent 92%);
+    }
 
-        header {
-            background: var(--primary);
-            color: white;
-            padding: 16px 24px;
-            border-radius: 8px;
-            margin-bottom: 24px;
-            text-align: center;
-        }
+    .shell {
+      width: min(1440px, calc(100vw - 32px));
+      margin: 18px auto;
+      display: grid;
+      grid-template-columns: 400px minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
 
-        header h1 {
-            font-size: 1.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
+    .panel,
+    .stage-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-xl);
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      box-shadow: var(--shadow);
+    }
 
-        .main-content {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 24px;
-        }
+    .panel {
+      padding: 24px;
+      position: sticky;
+      top: 18px;
+    }
 
-        @media (min-width: 768px) {
-            .main-content {
-                grid-template-columns: 1fr 1fr;
-            }
-        }
+    .stage-panel {
+      padding: 18px;
+    }
 
-        .card {
-            background: var(--card-bg);
-            border-radius: 8px;
-            padding: 24px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+    .panel::before,
+    .stage-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 24%);
+    }
 
-        .card-title {
-            font-size: 1.25rem;
-            margin-bottom: 16px;
-            color: var(--text);
-            border-bottom: 2px solid var(--primary);
-            padding-bottom: 8px;
-        }
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
 
-        .form-group {
-            margin-bottom: 16px;
-        }
+    h1 {
+      margin: 16px 0 10px;
+      font-family: var(--display);
+      font-size: clamp(2.3rem, 2rem + 1vw, 3rem);
+      line-height: 0.95;
+      letter-spacing: -0.04em;
+    }
 
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: var(--text);
-        }
+    .intro {
+      margin: 0 0 20px;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 15px;
+    }
 
-        .form-group select,
-        .form-group input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid var(--border);
-            border-radius: 4px;
-            font-size: 1rem;
-            transition: border-color 0.3s;
-        }
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
 
-        .form-group select:focus,
-        .form-group input[type="number"]:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
+    .field,
+    .pair {
+      display: grid;
+      gap: 8px;
+    }
 
-        .form-group input.error {
-            border-color: var(--error);
-        }
+    .pair {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
 
-        .checkbox-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+    label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #d6e1e9;
+    }
 
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            font-weight: normal;
-        }
+    input,
+    select {
+      width: 100%;
+      padding: 13px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      background: rgba(7, 11, 16, 0.52);
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
 
-        .checkbox-group input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--primary);
-        }
+    input[type="range"] {
+      padding: 0;
+    }
 
-        .btn {
-            width: 100%;
-            padding: 14px 24px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
+    input:focus,
+    select:focus {
+      border-color: rgba(255, 140, 66, 0.66);
+    }
 
-        .btn:hover {
-            background: var(--primary-dark);
-        }
+    button {
+      border: 0;
+      border-radius: 16px;
+      padding: 14px 16px;
+      font: inherit;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.16s ease, filter 0.16s ease;
+    }
 
-        .btn-secondary {
-            background: var(--text-secondary);
-            margin-top: 16px;
-        }
+    button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
 
-        .btn-secondary:hover {
-            background: #616161;
-        }
+    .actions,
+    .view-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
 
-        .error-message {
-            color: var(--error);
-            font-size: 0.875rem;
-            margin-top: 4px;
-            display: none;
-        }
+    .view-actions {
+      margin-top: 12px;
+    }
 
-        .error-message.show {
-            display: block;
-        }
+    .primary {
+      background: linear-gradient(135deg, var(--accent), #ffb067);
+      color: #10151c;
+      font-weight: 700;
+    }
 
-        .result-card {
-            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 16px;
-        }
+    .ghost {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
 
-        .result-card h3 {
-            color: var(--primary);
-            margin-bottom: 12px;
-        }
+    .stat-grid {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
 
-        .result-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary-dark);
-        }
+    .stat {
+      padding: 14px;
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
 
-        .result-detail {
-            color: var(--text-secondary);
-            margin-top: 8px;
-            font-size: 0.9rem;
-        }
+    .stat span {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
 
-        .history-list {
-            list-style: none;
-            max-height: 300px;
-            overflow-y: auto;
-        }
+    .stat strong {
+      font-size: 1.1rem;
+    }
 
-        .history-item {
-            padding: 12px;
-            border-bottom: 1px solid var(--border);
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
+    .stage-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 0 4px;
+    }
 
-        .history-item:hover {
-            background-color: #F5F5F5;
-        }
+    .stage-head h2,
+    .code-head h2 {
+      margin: 0;
+      font-size: 14px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #dbe6ee;
+    }
 
-        .history-item:last-child {
-            border-bottom: none;
-        }
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(76vh, 920px);
+      border-radius: 28px;
+      background:
+        radial-gradient(circle at top, rgba(255, 255, 255, 0.08), transparent 28%),
+        linear-gradient(180deg, #101823 0%, #0b121a 100%);
+      box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+    }
 
-        .history-frequency {
-            font-weight: 600;
-            color: var(--primary);
-        }
+    .caption {
+      margin: 12px 4px 0;
+      color: var(--muted);
+      line-height: 1.6;
+      font-size: 14px;
+    }
 
-        .history-result {
-            color: var(--text);
-            font-size: 0.95rem;
-        }
+    .code-wrap {
+      margin-top: 14px;
+      border-radius: 24px;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(5, 8, 12, 0.7);
+    }
 
-        .history-meta {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-        }
+    .code-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 15px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
 
-        .empty-state {
-            text-align: center;
-            padding: 24px;
-            color: var(--text-secondary);
-        }
+    pre {
+      margin: 0;
+      padding: 16px;
+      max-height: 220px;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.58;
+      color: #bff5ec;
+    }
 
-        .hidden {
-            display: none;
-        }
-    </style>
+    .status {
+      margin-top: 10px;
+      min-height: 20px;
+      color: #c7d6e1;
+      font-size: 13px;
+    }
+
+    @media (max-width: 1120px) {
+      .shell {
+        grid-template-columns: 1fr;
+      }
+
+      .panel {
+        position: relative;
+        top: auto;
+      }
+    }
+
+    @media (max-width: 720px) {
+      .shell {
+        width: min(100vw - 16px, 100%);
+        margin: 8px auto 18px;
+        gap: 12px;
+      }
+
+      .panel,
+      .stage-panel {
+        padding: 14px;
+        border-radius: 22px;
+      }
+
+      .pair,
+      .actions,
+      .view-actions,
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+
+      canvas {
+        height: 64vh;
+        min-height: 420px;
+      }
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📡 天線線長計算器</h1>
-        </header>
+  <main class="shell">
+    <section class="panel">
+      <span class="eyebrow">Dual-View Voxel Type</span>
+      <h1>雙視角 3D 文字產生器</h1>
+      <p class="intro">
+        正面投影顯示第一組字，Y 軸旋轉 90 度後顯示第二組字。這不是單純切換圖片，而是用兩個投影遮罩生成同一個體素結構。
+      </p>
 
-        <div class="main-content">
-            <!-- 輸入區塊 -->
-            <div class="card">
-                <h2 class="card-title">輸入參數</h2>
-                <form id="calculator-form">
-                    <div class="form-group">
-                        <label for="antenna-type">天線類型：</label>
-                        <select id="antenna-type">
-                            <option value="">請選擇天線類型</option>
-                            <option value="dipole">半波長 Dipole (λ/2)</option>
-                            <option value="gp">四分之一波長 GP (λ/4)</option>
-                            <option value="fullwave">全波長 (λ)</option>
-                            <option value="3lambda4">三波長 (3λ/4)</option>
-                            <option value="efhw">端饋半波長 EFHW (λ/2)</option>
-                        </select>
-                        <div class="error-message" id="antenna-type-error">請選擇天線類型</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="frequency">頻率 (MHz)：</label>
-                        <input type="number" id="frequency" placeholder="例如：14.230" step="0.001" min="1.8" max="3000">
-                        <div class="error-message" id="frequency-error">頻率需在 1.8~3000 MHz 之間</div>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="velocity-factor">縮短因子 (Velocity Factor)：</label>
-                        <input type="number" id="velocity-factor" value="0.8" step="0.01" min="0.1" max="1.0">
-                        <div class="error-message" id="velocity-factor-error">縮短因子需在 0.1~1.0 之間</div>
-                    </div>
-
-                    <div class="form-group">
-                        <div class="checkbox-group">
-                            <label>
-                                <input type="checkbox" id="unit-metric" checked>
-                                公制 (公尺/公分)
-                            </label>
-                            <label>
-                                <input type="checkbox" id="unit-imperial">
-                                英制 (英呎/英吋)
-                            </label>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn">開始計算</button>
-                </form>
-            </div>
-
-            <!-- 結果區塊 -->
-            <div class="card">
-                <h2 class="card-title">計算結果</h2>
-                <div id="result-container" class="hidden">
-                    <div class="result-card">
-                        <h3>線長</h3>
-                        <div class="result-value" id="result-length">--</div>
-                        <div class="result-detail" id="result-formula">--</div>
-                    </div>
-                    <div class="result-card">
-                        <h3>波長</h3>
-                        <div class="result-value" id="result-wavelength">--</div>
-                    </div>
-                </div>
-                <div id="result-empty" class="empty-state">
-                    請輸入參數並點擊計算
-                </div>
-            </div>
-
-            <!-- 歷史記錄區塊 -->
-            <div class="card" style="grid-column: 1 / -1;">
-                <h2 class="card-title">計算歷史</h2>
-                <ul id="history-list" class="history-list">
-                    <li class="empty-state">尚無計算記錄</li>
-                </ul>
-                <button type="button" id="clear-history" class="btn btn-secondary">清除歷史</button>
-            </div>
+      <form id="controlForm" class="form-grid">
+        <div class="pair">
+          <div class="field">
+            <label for="frontText">正面文字</label>
+            <input id="frontText" name="frontText" value="BV6LC">
+          </div>
+          <div class="field">
+            <label for="sideText">90 度文字</label>
+            <input id="sideText" name="sideText" value="DANLEE">
+          </div>
         </div>
-    </div>
 
-    <script>
-        // ============================================
-        // 天線計算核心模組
-        // ============================================
-        const AntennaCalculator = {
-            // 天線類型對應的波長倍數
-            ANTENNA_TYPES: {
-                'dipole': { name: '半波長 Dipole (λ/2)', multiplier: 0.5 },
-                'gp': { name: '四分之一波長 GP (λ/4)', multiplier: 0.25 },
-                'fullwave': { name: '全波長 (λ)', multiplier: 1.0 },
-                '3lambda4': { name: '三波長 (3λ/4)', multiplier: 0.75 },
-                'efhw': { name: '端饋半波長 EFHW (λ/2)', multiplier: 0.5 }
-            },
+        <div class="pair">
+          <div class="field">
+            <label for="gridHeight">字高解析度</label>
+            <input id="gridHeight" name="gridHeight" type="range" min="10" max="26" step="1" value="16">
+          </div>
+          <div class="field">
+            <label for="voxelSize">體素尺寸</label>
+            <input id="voxelSize" name="voxelSize" type="range" min="12" max="34" step="1" value="22">
+          </div>
+        </div>
 
-            // 計算天線線長
-            calculate: function(frequencyMHz, antennaType, velocityFactor) {
-                const type = this.ANTENNA_TYPES[antennaType];
-                if (!type) return null;
+        <div class="pair">
+          <div class="field">
+            <label for="fontFamily">字型風格</label>
+            <select id="fontFamily" name="fontFamily">
+              <option value="900 1px 'Arial Black', Impact, sans-serif">粗黑體</option>
+              <option value="900 1px 'Avenir Next Condensed', 'Arial Narrow', sans-serif">窄黑體</option>
+              <option value="900 1px 'Times New Roman', serif">粗襯線</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="gap">體素間距</label>
+            <input id="gap" name="gap" type="range" min="0.02" max="0.28" step="0.01" value="0.08">
+          </div>
+        </div>
 
-                // 波長 (公尺) = 300 / 頻率(MHz)
-                const wavelength = 300 / frequencyMHz;
+        <div class="pair">
+          <div class="field">
+            <label for="accent">主色</label>
+            <input id="accent" name="accent" type="color" value="#ff8c42">
+          </div>
+          <div class="field">
+            <label for="accent2">陰影色</label>
+            <input id="accent2" name="accent2" type="color" value="#68e0cf">
+          </div>
+        </div>
 
-                // 天線線長 = 波長 × 倍數 × 縮短因子
-                const length = wavelength * type.multiplier * velocityFactor;
+        <div class="actions">
+          <button type="submit" class="primary">重新生成</button>
+          <button type="button" id="downloadBtn" class="ghost">下載 PNG</button>
+        </div>
 
-                return {
-                    wavelength: wavelength,
-                    length: length,
-                    lengthInFeet: length * 3.28084,
-                    formula: `λ/${(1/type.multiplier).toFixed(0)} × ${velocityFactor}`,
-                    antennaTypeName: type.name,
-                    multiplier: type.multiplier
-                };
+        <div class="actions">
+          <button type="button" id="downloadStlBtn" class="ghost">下載 STL</button>
+          <button type="button" id="copySummaryBtn" class="ghost">複製摘要</button>
+        </div>
+
+        <div class="view-actions">
+          <button type="button" id="frontViewBtn" class="ghost">看 BV6LC</button>
+          <button type="button" id="sideViewBtn" class="ghost">看 DANLEE</button>
+        </div>
+
+        <div class="field">
+          <label for="rotation">旋轉角度</label>
+          <input id="rotation" name="rotation" type="range" min="0" max="90" step="1" value="0">
+        </div>
+      </form>
+
+      <div class="stat-grid">
+        <div class="stat">
+          <span>前視寬度</span>
+          <strong id="frontWidthStat">-</strong>
+        </div>
+        <div class="stat">
+          <span>側視寬度</span>
+          <strong id="sideWidthStat">-</strong>
+        </div>
+        <div class="stat">
+          <span>體素數量</span>
+          <strong id="voxelCountStat">-</strong>
+        </div>
+      </div>
+
+      <div id="status" class="status" aria-live="polite"></div>
+    </section>
+
+    <section class="stage-panel">
+      <div class="stage-head">
+        <h2>3D 預覽</h2>
+        <span class="eyebrow">Rotate 0° → 90°</span>
+      </div>
+      <canvas id="stage" width="1400" height="980"></canvas>
+      <p class="caption">
+        正面是 `BV6LC`，旋轉到 90 度是 `DANLEE`。中間角度會出現干涉感，這是雙投影體素字的正常結果。
+      </p>
+
+      <div class="code-wrap">
+        <div class="code-head">
+          <h2>模型摘要</h2>
+          <span class="eyebrow">ASCII STL</span>
+        </div>
+        <pre id="summary"></pre>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("controlForm");
+    const stage = document.getElementById("stage");
+    const ctx = stage.getContext("2d");
+    const rotationInput = document.getElementById("rotation");
+    const status = document.getElementById("status");
+    const summary = document.getElementById("summary");
+    const frontWidthStat = document.getElementById("frontWidthStat");
+    const sideWidthStat = document.getElementById("sideWidthStat");
+    const voxelCountStat = document.getElementById("voxelCountStat");
+
+    const state = {
+      voxels: [],
+      frontWidth: 0,
+      sideWidth: 0,
+      height: 0,
+      voxelSet: new Set()
+    };
+
+    function clamp(value, min, max) {
+      return Math.min(max, Math.max(min, value));
+    }
+
+    function hexToRgb(hex) {
+      const clean = hex.replace("#", "");
+      const value = Number.parseInt(clean, 16);
+      return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255
+      };
+    }
+
+    function mixColor(colorA, colorB, amount) {
+      const a = hexToRgb(colorA);
+      const b = hexToRgb(colorB);
+      const t = clamp(amount, 0, 1);
+      const r = Math.round(a.r + (b.r - a.r) * t);
+      const g = Math.round(a.g + (b.g - a.g) * t);
+      const bChannel = Math.round(a.b + (b.b - a.b) * t);
+      return `rgb(${r}, ${g}, ${bChannel})`;
+    }
+
+    function setStatus(message) {
+      status.textContent = message;
+    }
+
+    function getSettings() {
+      const data = Object.fromEntries(new FormData(form).entries());
+      return {
+        frontText: (data.frontText || "BV6LC").toUpperCase(),
+        sideText: (data.sideText || "DANLEE").toUpperCase(),
+        gridHeight: Number(data.gridHeight),
+        voxelSize: Number(data.voxelSize),
+        fontFamily: data.fontFamily,
+        gap: Number(data.gap),
+        accent: data.accent,
+        accent2: data.accent2,
+        rotationDeg: Number(rotationInput.value)
+      };
+    }
+
+    function rasterizeText(text, gridHeight, fontFamily) {
+      const sampleScale = 12;
+      const canvas = document.createElement("canvas");
+      const ctx2d = canvas.getContext("2d", { willReadFrequently: true });
+      const targetHeight = gridHeight * sampleScale;
+      const fontSize = Math.max(64, Math.floor(targetHeight * 0.86));
+      ctx2d.font = fontFamily.replace("1px", `${fontSize}px`);
+      const metrics = ctx2d.measureText(text);
+      const rawWidth = Math.max(1, Math.ceil(metrics.width + sampleScale * 2));
+      canvas.width = rawWidth;
+      canvas.height = targetHeight;
+
+      ctx2d.clearRect(0, 0, canvas.width, canvas.height);
+      ctx2d.fillStyle = "#000";
+      ctx2d.fillRect(0, 0, canvas.width, canvas.height);
+      ctx2d.fillStyle = "#fff";
+      ctx2d.font = fontFamily.replace("1px", `${fontSize}px`);
+      ctx2d.textBaseline = "middle";
+      ctx2d.textAlign = "center";
+      ctx2d.fillText(text, canvas.width / 2, canvas.height / 2);
+
+      const imageData = ctx2d.getImageData(0, 0, canvas.width, canvas.height).data;
+      const cols = [];
+      const rows = gridHeight;
+      const estimatedWidth = Math.max(6, Math.round((canvas.width / canvas.height) * gridHeight));
+
+      for (let gx = 0; gx < estimatedWidth; gx += 1) {
+        cols.push(Array(rows).fill(false));
+      }
+
+      for (let gx = 0; gx < estimatedWidth; gx += 1) {
+        for (let gy = 0; gy < rows; gy += 1) {
+          const startX = Math.floor((gx / estimatedWidth) * canvas.width);
+          const endX = Math.floor(((gx + 1) / estimatedWidth) * canvas.width);
+          const startY = Math.floor((gy / rows) * canvas.height);
+          const endY = Math.floor(((gy + 1) / rows) * canvas.height);
+          let onPixels = 0;
+          let totalPixels = 0;
+
+          for (let px = startX; px < Math.max(startX + 1, endX); px += 1) {
+            for (let py = startY; py < Math.max(startY + 1, endY); py += 1) {
+              const idx = (py * canvas.width + px) * 4;
+              totalPixels += 1;
+              if (imageData[idx] > 120) {
+                onPixels += 1;
+              }
             }
-        };
+          }
 
-        // ============================================
-        // 輸入驗證模組
-        // ============================================
-        const InputValidator = {
-            // 頻率範圍: 1.8 ~ 3000 MHz
-            FREQ_MIN: 1.8,
-            FREQ_MAX: 3000,
+          cols[gx][gy] = totalPixels > 0 && onPixels / totalPixels > 0.24;
+        }
+      }
 
-            // 縮短因子範圍: 0.1 ~ 1.0
-            VF_MIN: 0.1,
-            VF_MAX: 1.0,
+      let minX = estimatedWidth;
+      let maxX = -1;
+      for (let gx = 0; gx < estimatedWidth; gx += 1) {
+        if (cols[gx].some(Boolean)) {
+          minX = Math.min(minX, gx);
+          maxX = Math.max(maxX, gx);
+        }
+      }
 
-            validateFrequency: function(value) {
-                const freq = parseFloat(value);
-                if (isNaN(freq)) return { valid: false, message: '請輸入頻率' };
-                if (freq < this.FREQ_MIN || freq > this.FREQ_MAX) {
-                    return { valid: false, message: `頻率需在 ${this.FREQ_MIN}~${this.FREQ_MAX} MHz 之間` };
-                }
-                return { valid: true };
-            },
+      if (maxX === -1) {
+        return Array.from({ length: 6 }, () => Array(rows).fill(false));
+      }
 
-            validateVelocityFactor: function(value) {
-                const vf = parseFloat(value);
-                if (isNaN(vf)) return { valid: false, message: '請輸入縮短因子' };
-                if (vf < this.VF_MIN || vf > this.VF_MAX) {
-                    return { valid: false, message: `縮短因子需在 ${this.VF_MIN}~${this.VF_MAX} 之間` };
-                }
-                return { valid: true };
-            },
+      return cols.slice(minX, maxX + 1);
+    }
 
-            validateAntennaType: function(value) {
-                if (!value || value === '') {
-                    return { valid: false, message: '請選擇天線類型' };
-                }
-                return { valid: true };
+    function buildVoxelModel(settings) {
+      const frontMask = rasterizeText(settings.frontText, settings.gridHeight, settings.fontFamily);
+      const sideMask = rasterizeText(settings.sideText, settings.gridHeight, settings.fontFamily);
+      const frontWidth = frontMask.length;
+      const sideWidth = sideMask.length;
+      const voxels = [];
+
+      for (let x = 0; x < frontWidth; x += 1) {
+        for (let z = 0; z < sideWidth; z += 1) {
+          for (let y = 0; y < settings.gridHeight; y += 1) {
+            if (frontMask[x][y] && sideMask[z][y]) {
+              voxels.push({ x, y, z });
             }
-        };
+          }
+        }
+      }
 
-        // ============================================
-        // 歷史記錄管理模組
-        // ============================================
-        const HistoryManager = {
-            STORAGE_KEY: 'antenna_calculator_history',
+      return {
+        voxels,
+        frontWidth,
+        sideWidth,
+        height: settings.gridHeight
+      };
+    }
 
-            // 儲存計算結果
-            save: function(data) {
-                const history = this.load();
-                history.unshift(data); // 加入最新記錄
-                // 最多保留 50 筆記錄
-                if (history.length > 50) {
-                    history.pop();
-                }
-                localStorage.setItem(this.STORAGE_KEY, JSON.stringify(history));
-            },
+    function formatNumber(value) {
+      return Number(value.toFixed(4)).toString();
+    }
 
-            // 讀取歷史記錄
-            load: function() {
-                const data = localStorage.getItem(this.STORAGE_KEY);
-                return data ? JSON.parse(data) : [];
-            },
+    function voxelKey(x, y, z) {
+      return `${x},${y},${z}`;
+    }
 
-            // 清除所有歷史記錄
-            clear: function() {
-                localStorage.removeItem(this.STORAGE_KEY);
-            }
-        };
+    function buildVoxelSet(voxels) {
+      return new Set(voxels.map((voxel) => voxelKey(voxel.x, voxel.y, voxel.z)));
+    }
 
-        // ============================================
-        // UI 控制模組
-        // ============================================
-        const UIController = {
-            elements: {},
+    function projectPoint(x, y, z, rotation, scale) {
+      const cos = Math.cos(rotation);
+      const sin = Math.sin(rotation);
+      const rx = x * cos - z * sin;
+      const rz = x * sin + z * cos;
+      const isoX = (rx - rz) * scale * 0.88;
+      const isoY = y * scale * -1.05 + (rx + rz) * scale * 0.26;
+      return { x: isoX, y: isoY, depth: rx + rz + y * 0.2 };
+    }
 
-            init: function() {
-                // 快取 DOM 元素
-                this.elements = {
-                    form: document.getElementById('calculator-form'),
-                    antennaType: document.getElementById('antenna-type'),
-                    frequency: document.getElementById('frequency'),
-                    velocityFactor: document.getElementById('velocity-factor'),
-                    unitMetric: document.getElementById('unit-metric'),
-                    unitImperial: document.getElementById('unit-imperial'),
-                    resultContainer: document.getElementById('result-container'),
-                    resultEmpty: document.getElementById('result-empty'),
-                    resultLength: document.getElementById('result-length'),
-                    resultFormula: document.getElementById('result-formula'),
-                    resultWavelength: document.getElementById('result-wavelength'),
-                    historyList: document.getElementById('history-list'),
-                    clearHistory: document.getElementById('clear-history')
-                };
+    function cubeFaces(x, y, z, size, rotation) {
+      const vertices = [
+        [x, y, z],
+        [x + size, y, z],
+        [x + size, y + size, z],
+        [x, y + size, z],
+        [x, y, z + size],
+        [x + size, y, z + size],
+        [x + size, y + size, z + size],
+        [x, y + size, z + size]
+      ].map(([vx, vy, vz]) => projectPoint(vx, vy, vz, rotation, 1));
 
-                // 綁定事件
-                this.bindEvents();
-                
-                // 渲染歷史記錄
-                this.renderHistory();
-            },
+      return {
+        top: [vertices[3], vertices[2], vertices[6], vertices[7]],
+        left: [vertices[0], vertices[3], vertices[7], vertices[4]],
+        right: [vertices[1], vertices[2], vertices[6], vertices[5]],
+        depth: vertices.reduce((sum, point) => sum + point.depth, 0) / vertices.length
+      };
+    }
 
-            bindEvents: function() {
-                const self = this;
+    function drawPolygon(points, fillStyle, strokeStyle) {
+      ctx.beginPath();
+      ctx.moveTo(points[0].x, points[0].y);
+      for (let i = 1; i < points.length; i += 1) {
+        ctx.lineTo(points[i].x, points[i].y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = fillStyle;
+      ctx.fill();
+      ctx.strokeStyle = strokeStyle;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
 
-                // 表單提交
-                this.elements.form.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    self.handleCalculate();
-                });
+    function renderStage() {
+      const settings = getSettings();
+      const { voxels, frontWidth, sideWidth, height } = state;
+      const angle = settings.rotationDeg * Math.PI / 180;
 
-                // 單位Checkbox互斥
-                this.elements.unitMetric.addEventListener('change', function() {
-                    if (self.elements.unitMetric.checked) {
-                        self.elements.unitImperial.checked = false;
-                    }
-                });
+      ctx.clearRect(0, 0, stage.width, stage.height);
+      ctx.save();
+      ctx.translate(stage.width * 0.5, stage.height * 0.7);
 
-                this.elements.unitImperial.addEventListener('change', function() {
-                    if (self.elements.unitImperial.checked) {
-                        self.elements.unitMetric.checked = false;
-                    }
-                });
+      const bound = Math.max(frontWidth, sideWidth, height);
+      const scale = clamp(stage.width / (bound * 3.1), 10, 28);
+      const cubeSize = scale * (1 - settings.gap);
+      const offsetX = -frontWidth / 2;
+      const offsetZ = -sideWidth / 2;
+      const offsetY = -height / 2;
 
-                // 清除歷史
-                this.elements.clearHistory.addEventListener('click', function() {
-                    if (confirm('確定要清除所有計算歷史嗎？')) {
-                        HistoryManager.clear();
-                        self.renderHistory();
-                        self.clearResult();
-                    }
-                });
+      const sorted = voxels.map((voxel) => {
+        const worldX = (voxel.x + offsetX) * scale;
+        const worldY = (voxel.y + offsetY) * scale;
+        const worldZ = (voxel.z + offsetZ) * scale;
+        const faces = cubeFaces(worldX, worldY, worldZ, cubeSize, angle);
+        return { faces };
+      }).sort((a, b) => a.faces.depth - b.faces.depth);
 
-                // 即時驗證
-                this.elements.frequency.addEventListener('input', function() {
-                    self.clearError('frequency');
-                });
+      const topColor = mixColor(settings.accent, "#ffffff", 0.18);
+      const leftColor = mixColor(settings.accent2, "#081018", 0.26);
+      const rightColor = mixColor(settings.accent, settings.accent2, 0.42);
+      const stroke = "rgba(255,255,255,0.08)";
 
-                this.elements.velocityFactor.addEventListener('input', function() {
-                    self.clearError('velocity-factor');
-                });
+      for (const item of sorted) {
+        drawPolygon(item.faces.left, leftColor, stroke);
+        drawPolygon(item.faces.right, rightColor, stroke);
+        drawPolygon(item.faces.top, topColor, stroke);
+      }
 
-                this.elements.antennaType.addEventListener('change', function() {
-                    self.clearError('antenna-type');
-                });
-            },
+      ctx.restore();
+    }
 
-            handleCalculate: function() {
-                const antennaType = this.elements.antennaType.value;
-                const frequency = this.elements.frequency.value;
-                const velocityFactor = this.elements.velocityFactor.value;
-                const isMetric = this.elements.unitMetric.checked;
+    function updateSummary() {
+      const settings = getSettings();
+      const widthMm = state.frontWidth * settings.voxelSize;
+      const depthMm = state.sideWidth * settings.voxelSize;
+      const heightMm = state.height * settings.voxelSize;
+      summary.textContent = [
+        `frontText: ${settings.frontText}`,
+        `sideText: ${settings.sideText}`,
+        `gridHeight: ${settings.gridHeight}`,
+        `frontWidth: ${state.frontWidth}`,
+        `sideWidth: ${state.sideWidth}`,
+        `voxelCount: ${state.voxels.length}`,
+        `sizeMm: ${widthMm} x ${heightMm} x ${depthMm}`,
+        `voxelSizeMm: ${settings.voxelSize}`,
+        `rotationDeg: ${settings.rotationDeg}`,
+        `fontFamily: ${settings.fontFamily}`
+      ].join("\n");
+    }
 
-                // 清除舊錯誤
-                this.clearAllErrors();
+    function regenerate() {
+      const settings = getSettings();
+      state.voxels = [];
+      const model = buildVoxelModel(settings);
+      state.voxels = model.voxels;
+      state.frontWidth = model.frontWidth;
+      state.sideWidth = model.sideWidth;
+      state.height = model.height;
+      state.voxelSet = buildVoxelSet(model.voxels);
 
-                // 驗證輸入
-                const antennaTypeValidation = InputValidator.validateAntennaType(antennaType);
-                const frequencyValidation = InputValidator.validateFrequency(frequency);
-                const vfValidation = InputValidator.validateVelocityFactor(velocityFactor);
+      frontWidthStat.textContent = `${state.frontWidth} 格`;
+      sideWidthStat.textContent = `${state.sideWidth} 格`;
+      voxelCountStat.textContent = `${state.voxels.length}`;
 
-                if (!antennaTypeValidation.valid) {
-                    this.showError('antenna-type', antennaTypeValidation.message);
-                    return;
-                }
+      renderStage();
+      updateSummary();
+      setStatus("已重新生成雙視角體素模型。");
+    }
 
-                if (!frequencyValidation.valid) {
-                    this.showError('frequency', frequencyValidation.message);
-                    return;
-                }
+    function copySummary() {
+      navigator.clipboard.writeText(summary.textContent)
+        .then(() => setStatus("模型摘要已複製。"))
+        .catch(() => setStatus("無法複製摘要，可能是瀏覽器權限限制。"));
+    }
 
-                if (!vfValidation.valid) {
-                    this.showError('velocity-factor', vfValidation.message);
-                    return;
-                }
+    function downloadPng() {
+      const link = document.createElement("a");
+      link.href = stage.toDataURL("image/png");
+      link.download = "bv6lc-danlee-voxel.png";
+      link.click();
+      setStatus("已下載 PNG。");
+    }
 
-                // 執行計算
-                const result = AntennaCalculator.calculate(
-                    parseFloat(frequency),
-                    antennaType,
-                    parseFloat(velocityFactor)
-                );
+    function facetToStl(normal, points) {
+      const lines = [
+        `  facet normal ${normal.map(formatNumber).join(" ")}`,
+        "    outer loop"
+      ];
 
-                if (result) {
-                    // 顯示結果
-                    this.renderResult(result, isMetric);
+      for (const point of points) {
+        lines.push(`      vertex ${point.map(formatNumber).join(" ")}`);
+      }
 
-                    // 儲存歷史
-                    const historyItem = {
-                        id: Date.now().toString(),
-                        timestamp: new Date().toISOString(),
-                        frequency: parseFloat(frequency),
-                        antennaType: antennaType,
-                        velocityFactor: parseFloat(velocityFactor),
-                        unit: isMetric ? 'metric' : 'imperial',
-                        result: result
-                    };
-                    HistoryManager.save(historyItem);
-                    this.renderHistory();
-                }
-            },
+      lines.push("    endloop");
+      lines.push("  endfacet");
+      return lines.join("\n");
+    }
 
-            renderResult: function(result, isMetric) {
-                this.elements.resultEmpty.classList.add('hidden');
-                this.elements.resultContainer.classList.remove('hidden');
+    function quadToTriangles(normal, quad) {
+      return [
+        facetToStl(normal, [quad[0], quad[1], quad[2]]),
+        facetToStl(normal, [quad[0], quad[2], quad[3]])
+      ];
+    }
 
-                let lengthText, unitText;
-                if (isMetric) {
-                    if (result.length >= 1) {
-                        lengthText = result.length.toFixed(2) + ' 公尺';
-                    } else {
-                        lengthText = (result.length * 100).toFixed(1) + ' 公分';
-                    }
-                    unitText = '公尺';
-                } else {
-                    if (result.lengthInFeet >= 1) {
-                        lengthText = result.lengthInFeet.toFixed(2) + ' 英呎';
-                    } else {
-                        lengthText = (result.lengthInFeet * 12).toFixed(1) + ' 英吋';
-                    }
-                    unitText = '英呎';
-                }
+    function generateStl() {
+      const settings = getSettings();
+      const step = settings.voxelSize;
+      const lines = ["solid dual_view_text"];
+      const faceDefs = [
+        {
+          delta: [1, 0, 0],
+          normal: [1, 0, 0],
+          quad: (x, y, z) => [
+            [x + step, y, z],
+            [x + step, y + step, z],
+            [x + step, y + step, z + step],
+            [x + step, y, z + step]
+          ]
+        },
+        {
+          delta: [-1, 0, 0],
+          normal: [-1, 0, 0],
+          quad: (x, y, z) => [
+            [x, y, z],
+            [x, y, z + step],
+            [x, y + step, z + step],
+            [x, y + step, z]
+          ]
+        },
+        {
+          delta: [0, 1, 0],
+          normal: [0, 1, 0],
+          quad: (x, y, z) => [
+            [x, y + step, z],
+            [x, y + step, z + step],
+            [x + step, y + step, z + step],
+            [x + step, y + step, z]
+          ]
+        },
+        {
+          delta: [0, -1, 0],
+          normal: [0, -1, 0],
+          quad: (x, y, z) => [
+            [x, y, z],
+            [x + step, y, z],
+            [x + step, y, z + step],
+            [x, y, z + step]
+          ]
+        },
+        {
+          delta: [0, 0, 1],
+          normal: [0, 0, 1],
+          quad: (x, y, z) => [
+            [x, y, z + step],
+            [x + step, y, z + step],
+            [x + step, y + step, z + step],
+            [x, y + step, z + step]
+          ]
+        },
+        {
+          delta: [0, 0, -1],
+          normal: [0, 0, -1],
+          quad: (x, y, z) => [
+            [x, y, z],
+            [x, y + step, z],
+            [x + step, y + step, z],
+            [x + step, y, z]
+          ]
+        }
+      ];
 
-                this.elements.resultLength.textContent = lengthText;
-                this.elements.resultFormula.textContent = 
-                    `公式：${result.formula} = ${result.length.toFixed(3)} ${unitText}`;
-                this.elements.resultWavelength.textContent = 
-                    result.wavelength.toFixed(3) + ' 公尺';
-            },
+      for (const voxel of state.voxels) {
+        const x = voxel.x * step;
+        const y = (state.height - 1 - voxel.y) * step;
+        const z = voxel.z * step;
 
-            clearResult: function() {
-                this.elements.resultContainer.classList.add('hidden');
-                this.elements.resultEmpty.classList.remove('hidden');
-            },
+        for (const face of faceDefs) {
+          const nx = voxel.x + face.delta[0];
+          const ny = voxel.y + face.delta[1];
+          const nz = voxel.z + face.delta[2];
+          if (state.voxelSet.has(voxelKey(nx, ny, nz))) {
+            continue;
+          }
 
-            renderHistory: function() {
-                const history = HistoryManager.load();
-                const list = this.elements.historyList;
+          const facets = quadToTriangles(face.normal, face.quad(x, y, z));
+          lines.push(...facets);
+        }
+      }
 
-                if (history.length === 0) {
-                    list.innerHTML = '<li class="empty-state">尚無計算記錄</li>';
-                    return;
-                }
+      lines.push("endsolid dual_view_text");
+      return lines.join("\n");
+    }
 
-                list.innerHTML = history.map(item => {
-                    let lengthText;
-                    if (item.unit === 'metric') {
-                        lengthText = item.result.length >= 1 
-                            ? item.result.length.toFixed(2) + ' 公尺' 
-                            : (item.result.length * 100).toFixed(1) + ' 公分';
-                    } else {
-                        lengthText = item.result.lengthInFeet >= 1 
-                            ? item.result.lengthInFeet.toFixed(2) + ' 英呎' 
-                            : (item.result.lengthInFeet * 12).toFixed(1) + ' 英吋';
-                    }
+    function downloadStl() {
+      if (!state.voxels.length) {
+        setStatus("目前沒有可輸出的體素模型。");
+        return;
+      }
 
-                    const date = new Date(item.timestamp);
-                    const timeStr = date.toLocaleString('zh-TW', { 
-                        year: 'numeric', 
-                        month: '2-digit', 
-                        day: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                    });
+      const stl = generateStl();
+      const blob = new Blob([stl], { type: "model/stl" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "bv6lc-danlee-voxel.stl";
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatus("已下載 STL。");
+    }
 
-                    return `
-                        <li class="history-item">
-                            <div class="history-frequency">${item.frequency} MHz</div>
-                            <div class="history-result">
-                                ${item.result.antennaTypeName} → ${lengthText}
-                            </div>
-                            <div class="history-meta">
-                                VF: ${item.velocityFactor} · ${timeStr}
-                            </div>
-                        </li>
-                    `;
-                }).join('');
-            },
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      regenerate();
+    });
 
-            showError: function(fieldId, message) {
-                const input = document.getElementById(fieldId);
-                const error = document.getElementById(fieldId + '-error');
-                if (input) input.classList.add('error');
-                if (error) {
-                    error.textContent = message;
-                    error.classList.add('show');
-                }
-            },
+    form.addEventListener("input", (event) => {
+      if (event.target === rotationInput) {
+        renderStage();
+        updateSummary();
+        setStatus(`已旋轉到 ${rotationInput.value}°。`);
+        return;
+      }
 
-            clearError: function(fieldId) {
-                const input = document.getElementById(fieldId);
-                const error = document.getElementById(fieldId + '-error');
-                if (input) input.classList.remove('error');
-                if (error) error.classList.remove('show');
-            },
+      regenerate();
+    });
 
-            clearAllErrors: function() {
-                this.clearError('antenna-type');
-                this.clearError('frequency');
-                this.clearError('velocity-factor');
-            }
-        };
+    document.getElementById("frontViewBtn").addEventListener("click", () => {
+      rotationInput.value = "0";
+      renderStage();
+      updateSummary();
+      setStatus("已切到正面視角。");
+    });
 
-        // ============================================
-        // 初始化
-        // ============================================
-        document.addEventListener('DOMContentLoaded', function() {
-            UIController.init();
-        });
-    </script>
+    document.getElementById("sideViewBtn").addEventListener("click", () => {
+      rotationInput.value = "90";
+      renderStage();
+      updateSummary();
+      setStatus("已切到 90 度視角。");
+    });
+
+    document.getElementById("downloadBtn").addEventListener("click", downloadPng);
+    document.getElementById("downloadStlBtn").addEventListener("click", downloadStl);
+    document.getElementById("copySummaryBtn").addEventListener("click", copySummary);
+
+    regenerate();
+  </script>
 </body>
 </html>
