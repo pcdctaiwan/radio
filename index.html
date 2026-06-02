@@ -29,7 +29,7 @@
 <header>
   <h1>雙面文字 3D 錯視 + 底座</h1>
   <div class="info">正面 → BV6LC &nbsp;|&nbsp; 側面（旋轉 90°）→ DANLEE</div>
-  <div class="version">2026-06-02 17:56</div>
+  <div class="version">2026-06-02 18:02</div>
   <div class="controls">
     <button id="btnRotate">自動旋轉</button>
     <button id="btnExport">匯出 STL</button>
@@ -290,19 +290,17 @@ function animate() {
 animate();
 
 // ─── STL 匯出 ────────────────────────────────────────────────────────────────
-document.getElementById('btnExport').addEventListener('click', () => {
+document.getElementById('btnExport').addEventListener('click', async () => {
   if (!modelMesh) {
     alert('模型尚未建立完成，請稍候');
     return;
   }
   STATUS.textContent = '匯出 STL 中...';
   
-  // 直接從 instanced mesh 擷取所有 box
-  const positions = modelMesh.instanceMatrix.array;
   const count = modelMesh.count;
-  const triangles = [];
+  const triangleVertices = [];
   
-  // Box 的 8 個頂點（相對於中心）+ 36 個三角形索引
+  // Box vertices and indices
   const boxVerts = [
     [-0.5,-0.5,-0.5],[ 0.5,-0.5,-0.5],[ 0.5, 0.5,-0.5],[-0.5, 0.5,-0.5],
     [-0.5,-0.5, 0.5],[ 0.5,-0.5, 0.5],[ 0.5, 0.5, 0.5],[-0.5, 0.5, 0.5]
@@ -314,7 +312,6 @@ document.getElementById('btnExport').addEventListener('click', () => {
   
   const mat = new THREE.Matrix4();
   const pos = new THREE.Vector3();
-  const triangleVertices = [];
   
   for (let i = 0; i < count; i++) {
     modelMesh.getMatrixAt(i, mat);
@@ -325,9 +322,8 @@ document.getElementById('btnExport').addEventListener('click', () => {
     }
   }
   
-  // 寫入 STL binary
   const triCount = triangleVertices.length / 3;
-  const buf = new ArrayBuffer(84 + triCount * 50);
+  const buf = new ArrayBuffer(80 + 4 + triCount * 50);
   const view = new DataView(buf);
   const header = 'BV6LC DANLEE base';
   for (let i = 0; i < 80; i++) view.setUint8(i, header.charCodeAt(i) || 0);
@@ -341,25 +337,34 @@ document.getElementById('btnExport').addEventListener('click', () => {
     va.set(triangleVertices[t*3], triangleVertices[t*3+1], triangleVertices[t*3+2]);
     vb.set(triangleVertices[t*3+3], triangleVertices[t*3+4], triangleVertices[t*3+5]);
     vc.set(triangleVertices[t*3+6], triangleVertices[t*3+7], triangleVertices[t*3+8]);
-    n.crossVectors(vb.clone().sub(va), vc.clone().sub(va)).normalize();
+    n.subVectors(vb, va).cross(new THREE.Vector3().subVectors(vc, va)).normalize();
     
     view.setFloat32(offset, n.x, true); offset += 4;
     view.setFloat32(offset, n.y, true); offset += 4;
     view.setFloat32(offset, n.z, true); offset += 4;
-    for (const v of [va, vb, vc]) {
-      view.setFloat32(offset, v.x, true); offset += 4;
-      view.setFloat32(offset, v.y, true); offset += 4;
-      view.setFloat32(offset, v.z, true); offset += 4;
-    }
+    view.setFloat32(offset, va.x, true); offset += 4;
+    view.setFloat32(offset, va.y, true); offset += 4;
+    view.setFloat32(offset, va.z, true); offset += 4;
+    view.setFloat32(offset, vb.x, true); offset += 4;
+    view.setFloat32(offset, vb.y, true); offset += 4;
+    view.setFloat32(offset, vb.z, true); offset += 4;
+    view.setFloat32(offset, vc.x, true); offset += 4;
+    view.setFloat32(offset, vc.y, true); offset += 4;
+    view.setFloat32(offset, vc.z, true); offset += 4;
     view.setUint16(offset, 0, true); offset += 2;
   }
   
   const blob = new Blob([buf], { type: 'application/octet-stream' });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
+  a.href = url;
   a.download = 'BV6LC_DANLEE_base.stl';
+  document.body.appendChild(a);
   a.click();
-  STATUS.textContent = `STL 已下載（${triCount/3}個三角面）`;
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  STATUS.textContent = `STL 下載OK (${triCount/3}面)`;
+  setTimeout(() => STATUS.textContent = '', 3000);
 });
 </script>
 </body>
